@@ -1,0 +1,113 @@
+function [] = Tcoeff()
+% Purpose: To calculate the coefficients for the T equation.
+
+% constants
+global NPI NPJ 
+% variables
+global x x_u y y_v T Gamma SP Su F_u F_v relax_T Istart Iend Jstart Jend ...
+    b aE aW aN aS aP
+% Baffles
+global num_baf_bot pos_bot len_bot num_baf_top pos_top len_top
+
+Istart = 2;
+Iend = NPI+1;
+Jstart = 2;
+Jend = NPJ+1;
+
+convect();
+
+for I = Istart:Iend
+    i = I;
+    for J = Jstart:Jend
+        j = J;
+        % Geometrical parameters: Areas of the cell faces
+        AREAw = y_v(j+1) - y_v(j); % = A(i,J) See fig. 6.2 or fig. 6.5
+        AREAe = AREAw;
+        AREAs = x_u(i+1) - x_u(i); % = A(I,j)
+        AREAn = AREAs;
+        
+        % The convective mass flux defined in eq. 5.8a
+        % note:  F = rho*u but Fw = (rho*u)w = rho*u*AREAw per definition.    
+        Fw = F_u(i,J)*AREAw;
+        Fe = F_u(i+1,J)*AREAe;
+        Fs = F_v(I,j)*AREAs;
+        Fn = F_v(I,j+1)*AREAn;
+        
+        % The transport by diffusion defined in eq. 5.8b
+        % note: D = mu/Dx but Dw = (mu/Dx)*AREAw per definition        
+        % The conductivity, Gamma, at the interface is calculated with the use of a harmonic mean.        
+        Dw = ((Gamma(I-1,J)*Gamma(I,J))/(Gamma(I-1,J)*(x(I) - x_u(i)) ...
+            + Gamma(I,J)*(x_u(i) - x(I-1))))*AREAw;
+        De = ((Gamma(I,J)*Gamma(I+1,J))/(Gamma(I,J)*(x(I+1) - x_u(i+1)) ...
+            + Gamma(I+1,J)*(x_u(i+1) - x(I))))*AREAe;
+        Ds = ((Gamma(I,J-1)*Gamma(I,J))/(Gamma(I,J-1)*(y(J) - y_v(j)) ...
+            + Gamma(I,J)*(y_v(j) - y(J-1))))*AREAs;
+        Dn = ((Gamma(I,J)*Gamma(I,J+1))/(Gamma(I,J)*(y(J+1) - y_v(j+1)) ...
+            + Gamma(I,J+1)*(y_v(j+1) - y(J))))*AREAn;
+        
+        % The source terms
+        SP(I,J) = 0.;
+        Su(I,J) = 0.;
+        
+        % The coefficients (hybrid differencing scheme)
+        aW(I,j) = max([ Fw, Dw + Fw/2, 0.]);
+        aE(I,j) = max([-Fe, De - Fe/2, 0.]);
+        aS(I,j) = max([ Fs, Ds + Fs/2, 0.]);
+        aN(I,j) = max([-Fn, Dn - Fn/2, 0.]);
+        
+        % transport of T through the baffles can be switched off by setting the coefficients to zero  
+
+        % % if (I == ceil((NPI+1)/5)-1 && J < ceil((NPJ+1)/3))     % left of baffle #1
+        % %     aE(I,J) = 0;
+        % % end       
+        % % if (I == ceil((NPI+1)/5)   && J < ceil((NPJ+1)/3))     % right of baffle #1
+        % %     aW(I,J) = 0;
+        % % end
+        % % 
+        % % if (I == ceil(2*(NPI+1)/5)-1 && J > ceil(2*(NPJ+1)/3)) % left of baffle #2
+        % %     aE(I,J) = 0;
+        % % end       
+        % % if (I == ceil(2*(NPI+1)/5)   && J > ceil(2*(NPJ+1)/3)) % right of baffle #2
+        % %     aW(I,J) = 0;
+        % % end
+
+        for baf = 1:num_baf_bot
+            i_baf = max(3, min(NPI+1, round(pos_bot(baf) * NPI) + 1));
+            J_max = round(len_bot(baf) * NPJ) + 1;
+            if (I == i_baf - 1 && J <= J_max) % Left of baffle
+                aE(I,J) = 0;
+            end
+            if (I == i_baf && J <= J_max)     % Right of baffle
+                aW(I,J) = 0;
+            end
+        end
+        
+        % Top Baffles
+        for baf = 1:num_baf_top
+            i_baf = max(3, min(NPI+1, round(pos_top(baf) * NPI) + 1));
+            J_min = NPJ + 2 - round(len_top(baf) * NPJ);
+            if (I == i_baf - 1 && J >= J_min)
+                aE(I,J) = 0;
+            end
+            if (I == i_baf && J >= J_min)
+                aW(I,J) = 0;
+            end
+        end
+        
+        % eq. 8.31 without time dependent terms (see also eq. 5.14):
+        aP(I,J) = aW(I,J) + aE(I,J) + aS(I,J) + aN(I,J) + Fe - Fw + Fn - Fs - SP(I,J);
+        
+        % Setting the source term equal to b       
+        b(I,J) = Su(I,J);
+        
+        % Introducing relaxation by eq. 6.36 . and putting also the last
+        % term on the right side into the source term b(i,J)        
+        aP(I,J) = aP(I,J) / relax_T;
+        b (I,J) = b (I,J) + (1 - relax_T)*aP(I,J)*T(I,J);
+        
+        % now the TDMA algorithm can be called to solve the equation.
+        % This is done in the next step of the main program.
+    end
+end
+end
+
