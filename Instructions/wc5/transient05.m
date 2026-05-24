@@ -15,7 +15,7 @@ clc
 %% declare all variables and contants
 % variables
 global x x_u y y_v u v pc T rho mu Gamma b SMAX SAVG aP aE aW aN aS eps k...
-    u_old v_old pc_old T_old Dt eps_old k_old uplus yplus yplus1 yplus2 f f_old
+    u_old v_old pc_old T_old Dt eps_old k_old uplus yplus yplus1 yplus2 f f_old time
 % constants
 global NPI NPJ XMAX YMAX LARGE U_IN SMALL Cmu sigmak sigmaeps C1eps C2eps kappa ERough Ti Sc Sct
 
@@ -60,9 +60,11 @@ TOTAL_TIME = 1.;
 %% start main function here
 init(); % initialization
 bound(); % apply boundary conditions
+timestep = 0;
 
 for time = Dt:Dt:TOTAL_TIME
     iter = 0;
+    timestep = timestep+1;
     
     % outer iteration loop
     while iter < MAX_ITER && SMAX > SMAXneeded && SAVG > SAVGneeded
@@ -97,16 +99,16 @@ for time = Dt:Dt:TOTAL_TIME
             eps = solve(eps, b, aE, aW, aN, aS, aP);
         end
         
-%         fcoeff();
-%         for iter_f = 1:F_ITER
-%             f = solve(f, b, aE, aW, aN, aS, aP);
-%         end
-        
-        
-%         Tcoeff();
-%         for iter_T = 1:T_ITER
-%             T = solve(T, b, aE, aW, aN, aS, aP);
-%         end
+        fcoeff();
+        for iter_f = 1:F_ITER
+            f = solve(f, b, aE, aW, aN, aS, aP);
+        end
+
+
+        Tcoeff();
+        for iter_T = 1:T_ITER
+            T = solve(T, b, aE, aW, aN, aS, aP);
+        end
 %         
         viscosity();
         bound();
@@ -137,6 +139,9 @@ for time = Dt:Dt:TOTAL_TIME
         time,u(ceil(3*(NPI+1)/10),ceil(2*(NPJ+1)/5)),v(ceil(3*(NPI+1)/10),ceil(2*(NPJ+1)/5)),...
         T(ceil(3*(NPI+1)/10),ceil(2*(NPJ+1)/5)), f(ceil(3*(NPI+1)/10),ceil(2*(NPJ+1)/5)), SMAX, SAVG);
     % end: printConv(time, iter)===========================================
+    if timestep==1 || mod(timestep,10)==0
+        createGIF(f);
+    end
     
     % reset SMAX and SAVG
     SMAX = LARGE;

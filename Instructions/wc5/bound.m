@@ -21,6 +21,7 @@ T(1:NPI+2,1) = 273.; % bottom wall
 T(1:NPI+2,NPJ+2) = 273.; % top wall
 
 % Set f at the inlet
+f(1,:) = 1;
 f(1,1:ceil((NPJ+2)*0.01/YMAX)) = 0;
 f(1,NPJ+2-ceil((NPJ+2)*0.01/YMAX)+1:NPJ+2) = 0;
 

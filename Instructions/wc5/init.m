@@ -141,7 +141,7 @@ yplus2(:,:)= sqrt(rho .* u ./ mu) * (y(NPJ+2) - y(NPJ+1));  % yplus2
 yplus(:,:) = 1.;       % yplus
 tw(:,:)    = 5.;       % tw
 
-f(:,:)     = 1.;       % Initial field mixture fraction
+f(:,:)     = 0.;       % Initial field mixture fraction
 f_old(:,:) = f;        % mixture fraction old timestep
 
 u_old      = u;        % Velocity in x-direction old timestep
